@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Equestrian Scheduler",
+    "slug": "equestrian-scheduler",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "equestrian-scheduler",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.equestrianscheduler.app"
+    },
+    "android": {
+      "package": "com.equestrianscheduler.app"
+    },
+    "plugins": []
+  }
+}
