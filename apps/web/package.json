@@ -13,6 +13,8 @@
     "@equestrian-scheduler/calendar": "workspace:*",
     "@equestrian-scheduler/domain": "workspace:*",
     "@equestrian-scheduler/ui-tokens": "workspace:*",
+    "@supabase/ssr": "^0.5.2",
+    "@supabase/supabase-js": "^2.47.10",
     "next": "^15.1.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

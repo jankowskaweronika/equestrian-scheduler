@@ -53,16 +53,41 @@ Copy environment templates before connecting Supabase:
 
 - `apps/web/.env.example` → `apps/web/.env.local`
 - `apps/mobile/.env.example` → `apps/mobile/.env`
+- `.env.supabase.example` → `.env.supabase.local` (database passwords only)
+
+## Supabase
+
+Two cloud projects are configured in **Central EU (Frankfurt)**:
+
+| Environment | Project | Dashboard |
+|-------------|---------|-----------|
+| Development | `equestrian-scheduler-dev` | https://supabase.com/dashboard/project/xvpaeltrbbddhxbramvo |
+| Production | `equestrian-scheduler-prod` | https://supabase.com/dashboard/project/kwgczbtscohbtzqmfhbv |
+
+The local CLI is linked to **development**. Database passwords live in `.env.supabase.local` (gitignored) — store them in your password manager.
+
+```bash
+# Push new migrations to linked (dev) project
+npx pnpm@9.15.9 db:push
+
+# Local Supabase stack (optional)
+npx pnpm@9.15.9 supabase:start
+npx pnpm@9.15.9 db:reset
+```
+
+Initial migration includes all MVP tables, RLS policies, and auth profile trigger. Run `supabase/seed.sql` in the dev SQL editor to load sample organization data.
 
 ## Scripts
 
-| Command          | Description                    |
-| ---------------- | ------------------------------ |
-| `pnpm dev`       | Start all apps in dev mode     |
-| `pnpm build`     | Build all packages and apps    |
-| `pnpm lint`      | Run ESLint across the monorepo |
-| `pnpm typecheck` | Run TypeScript checks          |
-| `pnpm format`    | Format with Prettier           |
+| Command              | Description                         |
+| -------------------- | ----------------------------------- |
+| `pnpm dev`           | Start all apps in dev mode          |
+| `pnpm build`         | Build all packages and apps         |
+| `pnpm lint`          | Run ESLint across the monorepo      |
+| `pnpm typecheck`     | Run TypeScript checks               |
+| `pnpm format`        | Format with Prettier                |
+| `pnpm db:push`       | Push migrations to linked Supabase  |
+| `pnpm supabase:start`| Start local Supabase Docker stack   |
 
 ## Implementation stages
 
