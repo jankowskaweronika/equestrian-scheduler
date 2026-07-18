@@ -28,6 +28,12 @@ supabase/
 docs/
 ```
 
+## Documentation
+
+- [`docs/how-it-works.md`](docs/how-it-works.md) — how the application works today (current implemented state: data model, security/RLS, auth flows, business logic, frontend).
+- [`docs/product-mvp.md`](docs/product-mvp.md) — product specification (what we want to build).
+- [`docs/technical-plan.md`](docs/technical-plan.md) — technical plan and implementation stages.
+
 ## Prerequisites
 
 - Node.js 20+
