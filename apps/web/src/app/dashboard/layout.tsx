@@ -5,6 +5,7 @@ import { Button } from '@/components/ui';
 import { NavLink } from '@/components/nav-link';
 import {
   BuildingIcon,
+  CalendarIcon,
   HorseIcon,
   OverviewIcon,
   PlusIcon,
@@ -14,6 +15,7 @@ import {
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Przegląd', icon: <OverviewIcon />, exact: true },
+  { href: '/dashboard/calendar', label: 'Kalendarz', icon: <CalendarIcon /> },
   { href: '/dashboard/organization', label: 'Ośrodek', icon: <BuildingIcon /> },
   { href: '/dashboard/resources', label: 'Zasoby', icon: <ResourcesIcon /> },
   { href: '/dashboard/horses', label: 'Konie', icon: <HorseIcon /> },
@@ -22,7 +24,8 @@ const NAV_ITEMS = [
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await requireManagerSession();
-  const initials = `${session.profile.firstName?.[0] ?? ''}${session.profile.lastName?.[0] ?? ''}`.toUpperCase();
+  const initials =
+    `${session.profile.firstName?.[0] ?? ''}${session.profile.lastName?.[0] ?? ''}`.toUpperCase();
 
   return (
     <div

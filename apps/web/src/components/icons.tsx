@@ -64,6 +64,17 @@ export function TeamIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function CalendarIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props} aria-hidden="true">
+      <rect x="3" y="4.5" width="18" height="16" rx="2" />
+      <path d="M3 9h18" />
+      <path d="M8 3v3M16 3v3" />
+      <path d="M7.5 13h2M11 13h2M14.5 13h2M7.5 16.5h2M11 16.5h2" />
+    </svg>
+  );
+}
+
 export function PlusIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props} aria-hidden="true">

@@ -117,6 +117,33 @@ button:not(:disabled):active {
   transform: translateY(1px);
 }
 
+/* Base button styles so anchors styled as buttons match <Button> visuals.
+   The Button component still applies inline styles, which take precedence. */
+.es-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  font-size: var(--font-sm);
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.es-btn:hover {
+  text-decoration: none;
+}
+
+.es-btn--secondary {
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
 .es-btn--primary:not(:disabled):hover {
   background: var(--color-primary-hover) !important;
   box-shadow: var(--shadow-sm);
@@ -228,6 +255,18 @@ button:not(:disabled):active {
   text-decoration: none;
   border-color: var(--color-border-strong);
   box-shadow: var(--shadow-md);
+}
+
+/* Calendar lesson blocks */
+.es-cal-block {
+  transition:
+    box-shadow 120ms ease,
+    filter 120ms ease;
+}
+
+.es-cal-block:hover {
+  box-shadow: var(--shadow-sm);
+  filter: brightness(0.98);
 }
 
 /* Custom scrollbar (WebKit) */

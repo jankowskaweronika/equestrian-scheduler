@@ -5,6 +5,7 @@ import { Card, PageHeader } from '@/components/ui';
 import {
   ArrowRightIcon,
   BuildingIcon,
+  CalendarIcon,
   HorseIcon,
   ResourcesIcon,
   TeamIcon,
@@ -12,6 +13,12 @@ import {
 import { colors, radii, spacing, typography } from '@equestrian-scheduler/ui-tokens';
 
 const SECTIONS = [
+  {
+    href: '/dashboard/calendar',
+    title: 'Kalendarz',
+    description: 'Lekcje na zasobach: instruktorzy, konie i status.',
+    icon: <CalendarIcon width={22} height={22} />,
+  },
   {
     href: '/dashboard/organization',
     title: 'Ośrodek',
@@ -45,7 +52,7 @@ export default async function DashboardPage() {
     <div>
       <PageHeader
         title="Przegląd"
-        description="Zarządzaj ośrodkiem, zasobami, końmi i zespołem przed uruchomieniem kalendarza."
+        description="Zarządzaj kalendarzem, ośrodkiem, zasobami, końmi i zespołem."
       />
 
       {!session.membership ? (

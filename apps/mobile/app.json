@@ -14,6 +14,9 @@
     "android": {
       "package": "com.equestrianscheduler.app"
     },
+    "web": {
+      "bundler": "metro"
+    },
     "plugins": []
   }
 }
