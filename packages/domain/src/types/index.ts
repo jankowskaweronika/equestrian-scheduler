@@ -10,6 +10,8 @@ export type LessonStatus = 'active' | 'cancelled';
 export type ParticipantStatus = 'active' | 'cancelled';
 export type PaymentStatus = 'paid' | 'unpaid';
 export type InviteStatus = 'pending' | 'accepted' | 'expired';
+export type SubscriptionStatus = 'trial' | 'active' | 'past_due' | 'cancelled';
+export type BillingCycle = 'monthly' | 'yearly';
 
 export const TIME_SLOT_MINUTES = 15 as const;
 export const DEFAULT_TIMEZONE = 'Europe/Warsaw' as const;

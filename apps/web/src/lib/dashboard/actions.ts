@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 import { requireManagerSession, requireProductAdminSession } from '@/lib/auth/session';
+import { sendInviteEmail } from '@/lib/email';
 import { createClient } from '@/lib/supabase/server';
 
 function getOrganizationId(session: Awaited<ReturnType<typeof requireManagerSession>>) {
@@ -24,6 +25,12 @@ export async function updateOrganization(formData: FormData): Promise<void> {
   const calendarOpensAt = String(formData.get('calendarOpensAt') ?? '07:00');
   const calendarClosesAt = String(formData.get('calendarClosesAt') ?? '22:00');
   const logoUrl = String(formData.get('logoUrl') ?? '').trim() || null;
+  const address = String(formData.get('address') ?? '').trim() || null;
+  const website = String(formData.get('website') ?? '').trim() || null;
+  const facebookUrl = String(formData.get('facebookUrl') ?? '').trim() || null;
+  const instagramUrl = String(formData.get('instagramUrl') ?? '').trim() || null;
+  const contactEmail = String(formData.get('contactEmail') ?? '').trim() || null;
+  const contactPhone = String(formData.get('contactPhone') ?? '').trim() || null;
 
   if (!name) {
     redirect(
@@ -40,6 +47,12 @@ export async function updateOrganization(formData: FormData): Promise<void> {
       calendar_opens_at: calendarOpensAt,
       calendar_closes_at: calendarClosesAt,
       logo_url: logoUrl,
+      address,
+      website,
+      facebook_url: facebookUrl,
+      instagram_url: instagramUrl,
+      contact_email: contactEmail,
+      contact_phone: contactPhone,
     })
     .eq('id', organizationId);
 
@@ -179,13 +192,29 @@ export async function createInvite(formData: FormData): Promise<void> {
     redirect('/dashboard/team?error=' + encodeURIComponent('Nie udało się utworzyć zaproszenia.'));
   }
 
+  const { data: organization } = await supabase
+    .from('organizations')
+    .select('name')
+    .eq('id', organizationId)
+    .single();
+
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
   const inviteUrl = `${appUrl}/invite/${data.token}`;
+
+  const emailResult = await sendInviteEmail({
+    to: email,
+    inviteUrl,
+    organizationName: organization?.name ?? 'ośrodka',
+    role,
+  });
+  const emailNote = emailResult.ok
+    ? `Wysłaliśmy e-mail na ${email}.`
+    : 'Nie udało się wysłać e-maila — przekaż link ręcznie.';
 
   revalidatePath('/dashboard/team');
   redirect(
     '/dashboard/team?success=' +
-      encodeURIComponent(`Zaproszenie utworzone. Link aktywacyjny: ${inviteUrl}`),
+      encodeURIComponent(`Zaproszenie utworzone. ${emailNote} Link aktywacyjny: ${inviteUrl}`),
   );
 }
 
@@ -196,9 +225,14 @@ export async function createOrganization(formData: FormData): Promise<void> {
   const timezone = String(formData.get('timezone') ?? 'Europe/Warsaw').trim();
   const calendarOpensAt = String(formData.get('calendarOpensAt') ?? '07:00');
   const calendarClosesAt = String(formData.get('calendarClosesAt') ?? '22:00');
+  const managerEmail = String(formData.get('managerEmail') ?? '')
+    .trim()
+    .toLowerCase();
 
   if (!name) {
-    redirect('/admin/organizations?error=' + encodeURIComponent('Nazwa ośrodka jest wymagana.'));
+    redirect(
+      '/admin/organizations/new?error=' + encodeURIComponent('Nazwa ośrodka jest wymagana.'),
+    );
   }
 
   const supabase = await createClient();
@@ -214,30 +248,57 @@ export async function createOrganization(formData: FormData): Promise<void> {
     .single();
 
   if (error || !organization) {
-    redirect('/admin/organizations?error=' + encodeURIComponent('Nie udało się utworzyć ośrodka.'));
-  }
-
-  const { error: membershipError } = await supabase.from('memberships').insert({
-    organization_id: organization.id,
-    user_id: session.userId,
-    role: 'manager',
-  });
-
-  if (membershipError) {
     redirect(
-      '/admin/organizations?error=' +
-        encodeURIComponent('Ośrodek utworzony, ale nie udało się przypisać Cię jako manager.'),
+      '/admin/organizations/new?error=' + encodeURIComponent('Nie udało się utworzyć ośrodka.'),
     );
   }
 
-  await supabase
-    .from('profiles')
-    .update({ active_organization_id: organization.id })
-    .eq('id', session.userId);
+  // The platform admin does NOT become the manager. Instead they invite the
+  // center owner (manager) by email, who accepts and runs the center.
+  if (!managerEmail) {
+    revalidatePath('/admin/organizations');
+    redirect(
+      '/admin/organizations?success=' +
+        encodeURIComponent(`Utworzono ośrodek „${name}”. Dodaj managera z listy ośrodków.`),
+    );
+  }
+
+  const { data: invite, error: inviteError } = await supabase
+    .from('invites')
+    .insert({
+      organization_id: organization.id,
+      email: managerEmail,
+      role: 'manager',
+      invited_by: session.userId,
+    })
+    .select('token')
+    .single();
+
+  if (inviteError || !invite) {
+    redirect(
+      '/admin/organizations?error=' +
+        encodeURIComponent('Ośrodek utworzony, ale nie udało się utworzyć zaproszenia managera.'),
+    );
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+  const inviteUrl = `${appUrl}/invite/${invite.token}`;
+
+  const emailResult = await sendInviteEmail({
+    to: managerEmail,
+    inviteUrl,
+    organizationName: name,
+    role: 'manager',
+  });
+  const emailNote = emailResult.ok
+    ? `Wysłaliśmy zaproszenie na ${managerEmail}.`
+    : 'Nie udało się wysłać e-maila — przekaż link managerowi ręcznie.';
 
   revalidatePath('/admin/organizations');
-  revalidatePath('/dashboard');
-  redirect('/admin/organizations?success=' + encodeURIComponent(`Utworzono ośrodek „${name}”.`));
+  redirect(
+    '/admin/organizations?success=' +
+      encodeURIComponent(`Utworzono ośrodek „${name}”. ${emailNote} Link dla managera: ${inviteUrl}`),
+  );
 }
 
 export async function switchOrganization(organizationId: string) {

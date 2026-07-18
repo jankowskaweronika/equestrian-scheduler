@@ -1,17 +1,24 @@
 import Link from 'next/link';
 
 import { requireProductAdminSession } from '@/lib/auth/session';
-import { createOrganization } from '@/lib/dashboard/actions';
 import { createClient } from '@/lib/supabase/server';
+import { colors, radii, spacing, typography } from '@equestrian-scheduler/ui-tokens';
 import {
-  Button,
+  Badge,
   Card,
+  EmptyState,
   ErrorMessage,
-  Field,
-  Input,
   PageHeader,
+  SectionTitle,
   SuccessMessage,
 } from '@/components/ui';
+import { ArrowRightIcon, PlusIcon } from '@/components/icons';
+import {
+  organizationLifecycle,
+  SUBSCRIPTION_STATUS_LABELS,
+  subscriptionStatusTone,
+  type SubscriptionStatusKey,
+} from '@/lib/admin/labels';
 
 export default async function AdminOrganizationsPage({
   searchParams,
@@ -24,54 +31,123 @@ export default async function AdminOrganizationsPage({
 
   const { data: organizations } = await supabase
     .from('organizations')
-    .select('id, name, timezone, created_at')
-    .is('archived_at', null)
+    .select('id, name, timezone, created_at, archived_at, suspended_at')
     .order('created_at', { ascending: false });
 
+  const { data: subscriptions } = await supabase
+    .from('subscriptions')
+    .select('organization_id, plan, status');
+
+  const subscriptionByOrg = new Map(
+    (subscriptions ?? []).map((sub) => [sub.organization_id, sub]),
+  );
+
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: 32 }}>
+    <div style={{ maxWidth: 960, margin: '0 auto', padding: spacing.xl }}>
+      <p style={{ marginTop: 0 }}>
+        <Link href="/dashboard">← Wróć do panelu</Link>
+      </p>
+
       <PageHeader
-        title="Ośrodki"
-        description="Tworzenie nowych ośrodków podczas fazy pilotażu."
+        title="Panel administratora"
+        description="Zarządzanie ośrodkami, subskrypcjami i płatnościami za usługę."
+        actions={
+          <Link href="/admin/organizations/new" className="es-btn es-btn--primary" style={primaryLinkStyle}>
+            <PlusIcon width={16} height={16} /> Nowy ośrodek
+          </Link>
+        }
       />
 
-      <p>
-        Zalogowana jako: {session.profile.firstName} {session.profile.lastName}
-      </p>
-      <p>
-        <Link href="/dashboard">Wróć do panelu</Link>
+      <p
+        style={{
+          marginTop: `-${spacing.md}px`,
+          marginBottom: spacing.lg,
+          color: colors.textMuted,
+          fontSize: typography.fontSize.sm,
+        }}
+      >
+        Zalogowana jako {session.profile.firstName} {session.profile.lastName} · operator platformy
       </p>
 
-      <Card style={{ marginBottom: 24 }}>
-        <form action={createOrganization} style={{ display: 'grid', gap: 16, maxWidth: 520 }}>
-          <Field label="Nazwa ośrodka">
-            <Input name="name" required />
-          </Field>
-          <Field label="Strefa czasowa">
-            <Input name="timezone" defaultValue="Europe/Warsaw" required />
-          </Field>
-          <Field label="Kalendarz od">
-            <Input name="calendarOpensAt" type="time" defaultValue="07:00" required />
-          </Field>
-          <Field label="Kalendarz do">
-            <Input name="calendarClosesAt" type="time" defaultValue="22:00" required />
-          </Field>
-          <SuccessMessage message={params.success} />
-          <ErrorMessage message={params.error} />
-          <Button type="submit">Utwórz ośrodek</Button>
-        </form>
-      </Card>
+      <SuccessMessage message={params.success} />
+      <ErrorMessage message={params.error} />
 
-      <Card>
-        <h2 style={{ marginTop: 0 }}>Istniejące ośrodki</h2>
-        <ul>
-          {organizations?.map((organization) => (
-            <li key={organization.id}>
-              {organization.name} ({organization.timezone})
-            </li>
-          ))}
-        </ul>
+      <Card style={{ marginTop: spacing.md }}>
+        <SectionTitle>Wszystkie ośrodki ({organizations?.length ?? 0})</SectionTitle>
+        {organizations && organizations.length > 0 ? (
+          <div style={{ display: 'grid', gap: spacing.sm }}>
+            {organizations.map((organization) => {
+              const lifecycle = organizationLifecycle(organization);
+              const subscription = subscriptionByOrg.get(organization.id);
+              return (
+                <Link
+                  key={organization.id}
+                  href={`/admin/organizations/${organization.id}`}
+                  className="es-card-link"
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: spacing.md,
+                      padding: `${spacing.md}px`,
+                      border: `1px solid ${colors.border}`,
+                      borderRadius: radii.md,
+                      background: colors.surface,
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <strong>{organization.name}</strong>
+                      <p
+                        style={{
+                          margin: `2px 0 0`,
+                          color: colors.textMuted,
+                          fontSize: typography.fontSize.xs,
+                        }}
+                      >
+                        {organization.timezone} · utworzono{' '}
+                        {new Date(organization.created_at).toLocaleDateString('pl-PL')}
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
+                      {subscription ? (
+                        <Badge
+                          tone={subscriptionStatusTone(subscription.status)}
+                        >
+                          {SUBSCRIPTION_STATUS_LABELS[
+                            subscription.status as SubscriptionStatusKey
+                          ] ?? subscription.status}
+                        </Badge>
+                      ) : (
+                        <Badge tone="neutral">Brak subskrypcji</Badge>
+                      )}
+                      <Badge tone={lifecycle.tone}>{lifecycle.label}</Badge>
+                      <ArrowRightIcon width={16} height={16} />
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          <EmptyState>Nie utworzono jeszcze żadnych ośrodków.</EmptyState>
+        )}
       </Card>
     </div>
   );
 }
+
+const primaryLinkStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: spacing.xs,
+  padding: `10px ${spacing.md}px`,
+  borderRadius: radii.md,
+  border: '1px solid transparent',
+  background: colors.primary,
+  color: colors.primaryContrast,
+  fontSize: typography.fontSize.sm,
+  fontWeight: 600,
+  textDecoration: 'none',
+} as const;

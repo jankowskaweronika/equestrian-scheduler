@@ -1,17 +1,23 @@
 import { requireManagerSession } from '@/lib/auth/session';
 import { createInvite } from '@/lib/dashboard/actions';
 import { createClient } from '@/lib/supabase/server';
+import { spacing } from '@equestrian-scheduler/ui-tokens';
 import {
+  Badge,
   Button,
   Card,
+  EmptyState,
   ErrorMessage,
   Field,
   Input,
   PageHeader,
   ROLE_LABELS,
+  SectionTitle,
   Select,
   SuccessMessage,
+  Table,
 } from '@/components/ui';
+import { PlusIcon } from '@/components/icons';
 
 export default async function TeamPage({
   searchParams,
@@ -51,8 +57,9 @@ export default async function TeamPage({
         description="Członkowie ośrodka i zaproszenia ważne 7 dni."
       />
 
-      <Card style={{ marginBottom: 24 }}>
-        <form action={createInvite} style={{ display: 'grid', gap: 16, maxWidth: 520 }}>
+      <Card style={{ marginBottom: spacing.lg }}>
+        <SectionTitle>Zaproś do zespołu</SectionTitle>
+        <form action={createInvite} style={{ display: 'grid', gap: spacing.md, maxWidth: 520 }}>
           <Field label="Email">
             <Input name="email" type="email" required />
           </Field>
@@ -66,71 +73,89 @@ export default async function TeamPage({
           </Field>
           <SuccessMessage message={params.success} />
           <ErrorMessage message={params.error} />
-          <Button type="submit">Utwórz zaproszenie</Button>
+          <Button type="submit" style={{ justifySelf: 'start' }}>
+            <PlusIcon width={16} height={16} /> Utwórz zaproszenie
+          </Button>
         </form>
       </Card>
 
-      <Card style={{ marginBottom: 24 }}>
-        <h2 style={{ marginTop: 0 }}>Członkowie</h2>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th align="left">Imię i nazwisko</th>
-              <th align="left">Email</th>
-              <th align="left">Telefon</th>
-              <th align="left">Rola</th>
-            </tr>
-          </thead>
-          <tbody>
-            {members?.map((member) => {
-              const profile = (Array.isArray(member.profiles)
-                ? member.profiles[0]
-                : member.profiles) as {
-                first_name: string;
-                last_name: string;
-                email: string;
-                phone: string;
-              } | null;
+      <Card style={{ marginBottom: spacing.lg }}>
+        <SectionTitle>Członkowie</SectionTitle>
+        {members && members.length > 0 ? (
+          <Table>
+            <thead>
+              <tr>
+                <th>Imię i nazwisko</th>
+                <th>Email</th>
+                <th>Telefon</th>
+                <th>Rola</th>
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((member) => {
+                const profile = (Array.isArray(member.profiles)
+                  ? member.profiles[0]
+                  : member.profiles) as {
+                  first_name: string;
+                  last_name: string;
+                  email: string;
+                  phone: string;
+                } | null;
 
-              return (
-                <tr key={member.id}>
-                  <td>
-                    {profile?.first_name} {profile?.last_name}
-                  </td>
-                  <td>{profile?.email}</td>
-                  <td>{profile?.phone}</td>
-                  <td>{ROLE_LABELS[member.role as keyof typeof ROLE_LABELS]}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                return (
+                  <tr key={member.id}>
+                    <td>
+                      <strong>
+                        {profile?.first_name} {profile?.last_name}
+                      </strong>
+                    </td>
+                    <td>{profile?.email}</td>
+                    <td>{profile?.phone}</td>
+                    <td>
+                      <Badge tone="primary">
+                        {ROLE_LABELS[member.role as keyof typeof ROLE_LABELS]}
+                      </Badge>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </Table>
+        ) : (
+          <EmptyState>Brak członków zespołu.</EmptyState>
+        )}
       </Card>
 
       <Card>
-        <h2 style={{ marginTop: 0 }}>Oczekujące zaproszenia</h2>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th align="left">Email</th>
-              <th align="left">Rola</th>
-              <th align="left">Wygasa</th>
-              <th align="left">Link</th>
-            </tr>
-          </thead>
-          <tbody>
-            {invites?.map((invite) => (
-              <tr key={invite.id}>
-                <td>{invite.email}</td>
-                <td>{ROLE_LABELS[invite.role as keyof typeof ROLE_LABELS]}</td>
-                <td>{new Date(invite.expires_at).toLocaleString('pl-PL')}</td>
-                <td>
-                  <a href={`${appUrl}/invite/${invite.token}`}>{`${appUrl}/invite/${invite.token}`}</a>
-                </td>
+        <SectionTitle>Oczekujące zaproszenia</SectionTitle>
+        {invites && invites.length > 0 ? (
+          <Table>
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Rola</th>
+                <th>Wygasa</th>
+                <th>Link</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {invites.map((invite) => (
+                <tr key={invite.id}>
+                  <td>{invite.email}</td>
+                  <td>
+                    <Badge>{ROLE_LABELS[invite.role as keyof typeof ROLE_LABELS]}</Badge>
+                  </td>
+                  <td>{new Date(invite.expires_at).toLocaleString('pl-PL')}</td>
+                  <td>
+                    <a href={`${appUrl}/invite/${invite.token}`}>{`${appUrl}/invite/${invite.token}`}</a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        ) : (
+          <EmptyState>Brak oczekujących zaproszeń.</EmptyState>
+        )}
       </Card>
     </div>
   );

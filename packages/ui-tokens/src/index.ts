@@ -1,12 +1,16 @@
 export const colors = {
-  background: '#F8F6F1',
+  background: '#F7F5F0',
   surface: '#FFFFFF',
-  surfaceMuted: '#F0EDE6',
-  border: '#D9D2C5',
-  text: '#1F2933',
-  textMuted: '#5B6470',
+  surfaceMuted: '#F1EEE7',
+  border: '#E4DFD4',
+  borderStrong: '#D2CBBB',
+  text: '#1D2A24',
+  textMuted: '#6B7280',
   primary: '#2F5D3A',
   primaryHover: '#244A2E',
+  primarySoft: '#E7EFE9',
+  primaryContrast: '#FFFFFF',
+  focusRing: 'rgba(47, 93, 58, 0.28)',
   danger: '#B42318',
   dangerMuted: '#FDECEC',
   warning: '#B7791F',
@@ -53,6 +57,13 @@ export const radii = {
   md: 10,
   lg: 16,
   full: 9999,
+} as const;
+
+export const shadows = {
+  xs: '0 1px 2px rgba(29, 42, 36, 0.06)',
+  sm: '0 1px 3px rgba(29, 42, 36, 0.08), 0 1px 2px rgba(29, 42, 36, 0.04)',
+  md: '0 6px 16px rgba(29, 42, 36, 0.08), 0 2px 4px rgba(29, 42, 36, 0.04)',
+  lg: '0 16px 40px rgba(29, 42, 36, 0.12)',
 } as const;
 
 export const horseUtilizationColors = {

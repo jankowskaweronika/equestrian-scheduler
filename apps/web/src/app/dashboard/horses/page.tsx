@@ -1,15 +1,21 @@
 import { requireManagerSession } from '@/lib/auth/session';
 import { archiveHorse, createHorse } from '@/lib/dashboard/actions';
 import { createClient } from '@/lib/supabase/server';
+import { spacing } from '@equestrian-scheduler/ui-tokens';
 import {
+  Badge,
   Button,
   Card,
+  EmptyState,
   ErrorMessage,
   Field,
   Input,
   PageHeader,
+  SectionTitle,
   SuccessMessage,
+  Table,
 } from '@/components/ui';
+import { PlusIcon } from '@/components/icons';
 
 export default async function HorsesPage({
   searchParams,
@@ -40,8 +46,9 @@ export default async function HorsesPage({
         description="Konie szkoły z dziennym limitem jazd dla wskaźnika obciążenia."
       />
 
-      <Card style={{ marginBottom: 24 }}>
-        <form action={createHorse} style={{ display: 'grid', gap: 16, maxWidth: 520 }}>
+      <Card style={{ marginBottom: spacing.lg }}>
+        <SectionTitle>Dodaj konia</SectionTitle>
+        <form action={createHorse} style={{ display: 'grid', gap: spacing.md, maxWidth: 520 }}>
           <Field label="Imię konia">
             <Input name="name" required />
           </Field>
@@ -50,37 +57,50 @@ export default async function HorsesPage({
           </Field>
           <SuccessMessage message={params.success} />
           <ErrorMessage message={params.error} />
-          <Button type="submit">Dodaj konia</Button>
+          <Button type="submit" style={{ justifySelf: 'start' }}>
+            <PlusIcon width={16} height={16} /> Dodaj konia
+          </Button>
         </form>
       </Card>
 
       <Card>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th align="left">Imię</th>
-              <th align="left">Limit jazd / dzień</th>
-              <th align="left">Status</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {horses?.map((horse) => (
-              <tr key={horse.id}>
-                <td>{horse.name}</td>
-                <td>{horse.daily_ride_limit}</td>
-                <td>{horse.is_active ? 'Aktywny' : 'Nieaktywny'}</td>
-                <td>
-                  <form action={archiveHorse.bind(null, horse.id)}>
-                    <Button type="submit" variant="secondary">
-                      Archiwizuj
-                    </Button>
-                  </form>
-                </td>
+        <SectionTitle>Lista koni</SectionTitle>
+        {horses && horses.length > 0 ? (
+          <Table>
+            <thead>
+              <tr>
+                <th>Imię</th>
+                <th>Limit jazd / dzień</th>
+                <th>Status</th>
+                <th aria-label="Akcje" />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {horses.map((horse) => (
+                <tr key={horse.id}>
+                  <td>
+                    <strong>{horse.name}</strong>
+                  </td>
+                  <td>{horse.daily_ride_limit}</td>
+                  <td>
+                    <Badge tone={horse.is_active ? 'success' : 'neutral'}>
+                      {horse.is_active ? 'Aktywny' : 'Nieaktywny'}
+                    </Badge>
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <form action={archiveHorse.bind(null, horse.id)}>
+                      <Button type="submit" variant="secondary">
+                        Archiwizuj
+                      </Button>
+                    </form>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        ) : (
+          <EmptyState>Nie dodano jeszcze żadnych koni.</EmptyState>
+        )}
       </Card>
     </div>
   );

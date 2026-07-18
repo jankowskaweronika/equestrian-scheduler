@@ -2,6 +2,41 @@ import Link from 'next/link';
 
 import { requireManagerSession } from '@/lib/auth/session';
 import { Card, PageHeader } from '@/components/ui';
+import {
+  ArrowRightIcon,
+  BuildingIcon,
+  HorseIcon,
+  ResourcesIcon,
+  TeamIcon,
+} from '@/components/icons';
+import { colors, radii, spacing, typography } from '@equestrian-scheduler/ui-tokens';
+
+const SECTIONS = [
+  {
+    href: '/dashboard/organization',
+    title: 'Ośrodek',
+    description: 'Nazwa, godziny kalendarza i logo.',
+    icon: <BuildingIcon width={22} height={22} />,
+  },
+  {
+    href: '/dashboard/resources',
+    title: 'Zasoby',
+    description: 'Hale, ujeżdżalnie i limity zajęć.',
+    icon: <ResourcesIcon width={22} height={22} />,
+  },
+  {
+    href: '/dashboard/horses',
+    title: 'Konie',
+    description: 'Konie szkoły i dzienne limity jazd.',
+    icon: <HorseIcon width={22} height={22} />,
+  },
+  {
+    href: '/dashboard/team',
+    title: 'Zespół',
+    description: 'Członkowie ośrodka i zaproszenia.',
+    icon: <TeamIcon width={22} height={22} />,
+  },
+];
 
 export default async function DashboardPage() {
   const session = await requireManagerSession();
@@ -15,37 +50,66 @@ export default async function DashboardPage() {
 
       {!session.membership ? (
         <Card>
-          <p>Nie masz jeszcze przypisanego ośrodka.</p>
+          <p style={{ marginTop: 0 }}>Nie masz jeszcze przypisanego ośrodka.</p>
           {session.profile.isProductAdmin ? (
-            <p>
-              <Link href="/admin/organizations">Utwórz pierwszy ośrodek</Link>
+            <p style={{ marginBottom: 0 }}>
+              <Link href="/admin/organizations">Przejdź do panelu ośrodków (admin) →</Link>
             </p>
           ) : null}
         </Card>
       ) : (
         <div
-          style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}
+          style={{
+            display: 'grid',
+            gap: spacing.md,
+            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          }}
         >
-          <Card>
-            <h2 style={{ marginTop: 0 }}>Ośrodek</h2>
-            <p>{session.membership.organizationName}</p>
-            <Link href="/dashboard/organization">Ustawienia</Link>
-          </Card>
-          <Card>
-            <h2 style={{ marginTop: 0 }}>Zasoby</h2>
-            <p>Hale i ujeżdżalnie</p>
-            <Link href="/dashboard/resources">Zarządzaj</Link>
-          </Card>
-          <Card>
-            <h2 style={{ marginTop: 0 }}>Konie</h2>
-            <p>Konie szkoły i limity jazd</p>
-            <Link href="/dashboard/horses">Zarządzaj</Link>
-          </Card>
-          <Card>
-            <h2 style={{ marginTop: 0 }}>Zespół</h2>
-            <p>Członkowie i zaproszenia</p>
-            <Link href="/dashboard/team">Zarządzaj</Link>
-          </Card>
+          {SECTIONS.map((section) => (
+            <Link key={section.href} href={section.href} className="es-card-link">
+              <Card style={{ height: '100%', display: 'grid', gap: spacing.md }}>
+                <span
+                  aria-hidden="true"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 44,
+                    height: 44,
+                    borderRadius: radii.md,
+                    background: colors.primarySoft,
+                    color: colors.primary,
+                  }}
+                >
+                  {section.icon}
+                </span>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: typography.fontSize.lg }}>{section.title}</h2>
+                  <p
+                    style={{
+                      margin: `${spacing.xs}px 0 0`,
+                      color: colors.textMuted,
+                      fontSize: typography.fontSize.sm,
+                    }}
+                  >
+                    {section.description}
+                  </p>
+                </div>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: spacing.xs,
+                    color: colors.primary,
+                    fontSize: typography.fontSize.sm,
+                    fontWeight: 600,
+                  }}
+                >
+                  Zarządzaj <ArrowRightIcon width={16} height={16} />
+                </span>
+              </Card>
+            </Link>
+          ))}
         </div>
       )}
     </div>

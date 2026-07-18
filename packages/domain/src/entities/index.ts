@@ -1,4 +1,8 @@
-import type { MembershipRole } from '../types/index.js';
+import type {
+  BillingCycle,
+  MembershipRole,
+  SubscriptionStatus,
+} from '../types/index.js';
 
 export interface Organization {
   id: string;
@@ -7,6 +11,13 @@ export interface Organization {
   calendarOpensAt: string;
   calendarClosesAt: string;
   logoUrl: string | null;
+  address: string | null;
+  website: string | null;
+  facebookUrl: string | null;
+  instagramUrl: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  suspendedAt: string | null;
   archivedAt: string | null;
 }
 
@@ -98,4 +109,30 @@ export interface Invite {
   expiresAt: string;
   status: 'pending' | 'accepted' | 'expired';
   invitedBy: string;
+}
+
+// Platform-level SaaS subscription an organization holds with the operator.
+// Tracked manually by the product admin during the pilot phase.
+export interface Subscription {
+  id: string;
+  organizationId: string;
+  plan: string;
+  status: SubscriptionStatus;
+  priceAmount: number;
+  currency: string;
+  billingCycle: BillingCycle;
+  currentPeriodEnd: string | null;
+  notes: string | null;
+}
+
+// A single recorded payment an organization made to the platform operator.
+export interface ServicePayment {
+  id: string;
+  organizationId: string;
+  amount: number;
+  currency: string;
+  paidAt: string;
+  periodStart: string | null;
+  periodEnd: string | null;
+  note: string | null;
 }
