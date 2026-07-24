@@ -108,6 +108,15 @@ export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} style={{ ...inputStyle, ...props.style }} />;
 }
 
+export function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
+      {...props}
+      style={{ ...inputStyle, minHeight: 96, resize: 'vertical', ...props.style }}
+    />
+  );
+}
+
 export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
@@ -269,4 +278,9 @@ export const RESOURCE_TYPE_LABELS = {
   indoor: 'Hala',
   outdoor_arena: 'Ujeżdżalnia',
   other: 'Inne',
+} as const;
+
+export const FACILITY_EVENT_KIND_LABELS = {
+  public_event: 'Wydarzenie',
+  maintenance: 'Praca techniczna',
 } as const;

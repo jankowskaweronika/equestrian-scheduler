@@ -43,9 +43,28 @@ export interface HorseUsage {
   percentage: number;
 }
 
+export type FacilityEventKind = 'public_event' | 'maintenance';
+
+export interface CalendarFacilityEvent {
+  id: string;
+  resourceId: string | null;
+  kind: FacilityEventKind;
+  title: string;
+  description: string | null;
+  startsAt: string;
+  endsAt: string;
+  startMinutes: number;
+  endMinutes: number;
+  startLabel: string;
+  endLabel: string;
+  blocksScheduling: boolean;
+  isOrgWide: boolean;
+}
+
 export interface CalendarDayData {
   resources: CalendarResource[];
   lessons: CalendarLesson[];
+  events: CalendarFacilityEvent[];
   horseUsage: HorseUsage[];
 }
 

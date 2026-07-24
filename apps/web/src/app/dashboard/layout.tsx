@@ -17,7 +17,7 @@ const NAV_ITEMS = [
   { href: '/dashboard', label: 'Przegląd', icon: <OverviewIcon />, exact: true },
   { href: '/dashboard/calendar', label: 'Kalendarz', icon: <CalendarIcon /> },
   { href: '/dashboard/organization', label: 'Ośrodek', icon: <BuildingIcon /> },
-  { href: '/dashboard/resources', label: 'Zasoby', icon: <ResourcesIcon /> },
+  { href: '/dashboard/resources', label: 'Obiekty', icon: <ResourcesIcon /> },
   { href: '/dashboard/horses', label: 'Konie', icon: <HorseIcon /> },
   { href: '/dashboard/team', label: 'Zespół', icon: <TeamIcon /> },
 ];

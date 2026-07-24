@@ -25,8 +25,8 @@ export function AddLessonForm({
   if (!canCreate) {
     return (
       <p style={{ margin: 0, color: colors.textMuted, fontSize: typography.fontSize.sm }}>
-        Aby dodać lekcję, potrzebujesz co najmniej jednego zasobu i jednego instruktora (w
-        zakładkach Zasoby i Zespół).
+        Aby dodać lekcję, potrzebujesz co najmniej jednego obiektu i jednego instruktora (w
+        zakładkach Obiekty i Zespół).
       </p>
     );
   }

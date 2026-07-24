@@ -16,7 +16,7 @@ const SECTIONS = [
   {
     href: '/dashboard/calendar',
     title: 'Kalendarz',
-    description: 'Lekcje na zasobach: instruktorzy, konie i status.',
+    description: 'Lekcje na obiektach: instruktorzy, konie i status.',
     icon: <CalendarIcon width={22} height={22} />,
   },
   {
@@ -27,8 +27,8 @@ const SECTIONS = [
   },
   {
     href: '/dashboard/resources',
-    title: 'Zasoby',
-    description: 'Hale, ujeżdżalnie i limity zajęć.',
+    title: 'Obiekty',
+    description: 'Hale, ujeżdżalnie, wydarzenia i prace techniczne.',
     icon: <ResourcesIcon width={22} height={22} />,
   },
   {
@@ -52,7 +52,7 @@ export default async function DashboardPage() {
     <div>
       <PageHeader
         title="Przegląd"
-        description="Zarządzaj kalendarzem, ośrodkiem, zasobami, końmi i zespołem."
+        description="Zarządzaj kalendarzem, ośrodkiem, obiektami, końmi i zespołem."
       />
 
       {!session.membership ? (

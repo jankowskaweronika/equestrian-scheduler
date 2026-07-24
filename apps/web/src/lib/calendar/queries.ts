@@ -5,9 +5,11 @@ import { createClient } from '@/lib/supabase/server';
 import { formatTime, getMinutesOfDay, getZonedDayRange } from './time';
 import type {
   CalendarDayData,
+  CalendarFacilityEvent,
   CalendarLesson,
   CalendarLessonHorse,
   CalendarResource,
+  FacilityEventKind,
   HorseUsage,
   LessonFormOptions,
   LessonStatus,
@@ -44,6 +46,17 @@ type LessonRow = {
   lesson_participants: ParticipantRow[] | null;
 };
 
+type FacilityEventRow = {
+  id: string;
+  resource_id: string | null;
+  kind: FacilityEventKind;
+  title: string;
+  description: string | null;
+  starts_at: string;
+  ends_at: string;
+  blocks_scheduling: boolean;
+};
+
 function unwrap<T>(relation: T | T[] | null): T | null {
   if (Array.isArray(relation)) {
     return relation[0] ?? null;
@@ -58,6 +71,47 @@ function toArray<T>(relation: T | T[] | null | undefined): T[] {
   return Array.isArray(relation) ? relation : [relation];
 }
 
+function mapFacilityEvent(
+  row: FacilityEventRow,
+  dayStartUtc: Date,
+  dayEndUtc: Date,
+  timeZone: string,
+): CalendarFacilityEvent | null {
+  const rawStart = new Date(row.starts_at);
+  const rawEnd = new Date(row.ends_at);
+  const clippedStart = rawStart < dayStartUtc ? dayStartUtc : rawStart;
+  const clippedEnd = rawEnd > dayEndUtc ? dayEndUtc : rawEnd;
+  if (clippedEnd <= clippedStart) {
+    return null;
+  }
+
+  const startMinutes = getMinutesOfDay(clippedStart, timeZone);
+  // dayEndUtc is next midnight — minutes-of-day would read as 0, so use end-of-day.
+  const endMinutes =
+    clippedEnd.getTime() >= dayEndUtc.getTime()
+      ? 24 * 60
+      : getMinutesOfDay(clippedEnd, timeZone);
+
+  return {
+    id: row.id,
+    resourceId: row.resource_id,
+    kind: row.kind,
+    title: row.title,
+    description: row.description,
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
+    startMinutes,
+    endMinutes: Math.max(endMinutes, startMinutes + 1),
+    startLabel: formatTime(clippedStart, timeZone),
+    endLabel:
+      clippedEnd.getTime() >= dayEndUtc.getTime()
+        ? '24:00'
+        : formatTime(clippedEnd, timeZone),
+    blocksScheduling: row.blocks_scheduling,
+    isOrgWide: row.resource_id == null,
+  };
+}
+
 export async function getCalendarDay(
   organizationId: string,
   dateStr: string,
@@ -66,7 +120,7 @@ export async function getCalendarDay(
   const supabase = await createClient();
   const { startUtc, endUtc } = getZonedDayRange(dateStr, timeZone);
 
-  const [resourcesResult, lessonsResult] = await Promise.all([
+  const [resourcesResult, lessonsResult, eventsResult] = await Promise.all([
     supabase
       .from('facility_resources')
       .select('id, name, type, parallel_capacity')
@@ -84,6 +138,14 @@ export async function getCalendarDay(
       .gte('starts_at', startUtc.toISOString())
       .lt('starts_at', endUtc.toISOString())
       .order('starts_at'),
+    supabase
+      .from('facility_events')
+      .select('id, resource_id, kind, title, description, starts_at, ends_at, blocks_scheduling')
+      .eq('organization_id', organizationId)
+      .is('archived_at', null)
+      .lt('starts_at', endUtc.toISOString())
+      .gt('ends_at', startUtc.toISOString())
+      .order('starts_at'),
   ]);
 
   const resources: CalendarResource[] = (resourcesResult.data ?? []).map((row) => ({
@@ -94,6 +156,7 @@ export async function getCalendarDay(
   }));
 
   const lessonRows = (lessonsResult.data ?? []) as unknown as LessonRow[];
+  const eventRows = (eventsResult.data ?? []) as unknown as FacilityEventRow[];
 
   // Aggregate active rides per horse to compute today's utilization. Only active
   // participants on active lessons count towards a horse's daily load.
@@ -152,6 +215,10 @@ export async function getCalendarDay(
     };
   });
 
+  const events: CalendarFacilityEvent[] = eventRows
+    .map((row) => mapFacilityEvent(row, startUtc, endUtc, timeZone))
+    .filter((event): event is CalendarFacilityEvent => event != null);
+
   const horseUsage: HorseUsage[] = Array.from(horseUsageMap.entries())
     .map(([id, value]) => {
       const { percentage } = calculateHorseUtilization(value.rides, value.dailyLimit);
@@ -165,7 +232,7 @@ export async function getCalendarDay(
     })
     .sort((a, b) => b.percentage - a.percentage || a.name.localeCompare(b.name, 'pl'));
 
-  return { resources, lessons, horseUsage };
+  return { resources, lessons, events, horseUsage };
 }
 
 type MembershipOptionRow = {

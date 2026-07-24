@@ -46,6 +46,22 @@ export interface FacilityResource {
   archivedAt: string | null;
 }
 
+export type FacilityEventKind = 'public_event' | 'maintenance';
+
+export interface FacilityEvent {
+  id: string;
+  organizationId: string;
+  resourceId: string | null;
+  kind: FacilityEventKind;
+  title: string;
+  description: string | null;
+  startsAt: string;
+  endsAt: string;
+  blocksScheduling: boolean;
+  archivedAt: string | null;
+  createdBy: string | null;
+}
+
 export interface Horse {
   id: string;
   organizationId: string;

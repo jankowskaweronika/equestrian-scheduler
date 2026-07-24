@@ -1,5 +1,6 @@
 import type {
   BookingRequest,
+  FacilityEvent,
   FacilityResource,
   Horse,
   Invite,
@@ -35,6 +36,12 @@ export interface FacilityResourceRepository {
   listByOrganization(organizationId: string): Promise<FacilityResource[]>;
   create(resource: FacilityResource): Promise<FacilityResource>;
   update(resource: FacilityResource): Promise<FacilityResource>;
+}
+
+export interface FacilityEventRepository {
+  listByOrganization(organizationId: string): Promise<FacilityEvent[]>;
+  create(event: FacilityEvent): Promise<FacilityEvent>;
+  update(event: FacilityEvent): Promise<FacilityEvent>;
 }
 
 export interface HorseRepository {

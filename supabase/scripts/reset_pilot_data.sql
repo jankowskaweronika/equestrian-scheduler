@@ -21,6 +21,7 @@ truncate table
   public.lessons,
   public.lesson_series,
   public.booking_requests,
+  public.facility_events,
   public.horses,
   public.facility_resources,
   public.invites,

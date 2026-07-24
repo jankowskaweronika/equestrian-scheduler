@@ -6,7 +6,11 @@ import { colors, radii, spacing, typography } from '@equestrian-scheduler/ui-tok
 
 import { getMinutesOfDay } from '@/lib/calendar/time';
 import { RESOURCE_TYPE_LABELS } from '@/components/ui';
-import type { CalendarLesson, CalendarResource } from '@/lib/calendar/types';
+import type {
+  CalendarFacilityEvent,
+  CalendarLesson,
+  CalendarResource,
+} from '@/lib/calendar/types';
 
 const PX_PER_MINUTE = 1.2;
 const MIN_BLOCK_HEIGHT = 30;
@@ -34,9 +38,88 @@ function layoutColumn(lessons: CalendarLesson[]): { placed: PlacedLesson[]; lane
   return { placed, laneCount: Math.max(1, laneEnds.length) };
 }
 
+function eventStyles(kind: CalendarFacilityEvent['kind']) {
+  if (kind === 'maintenance') {
+    return {
+      border: colors.danger,
+      background: colors.dangerMuted,
+      label: 'Praca techniczna',
+    };
+  }
+  return {
+    border: colors.warning,
+    background: colors.warningMuted,
+    label: 'Wydarzenie',
+  };
+}
+
+function EventBlock({
+  event,
+  openMinutes,
+  closeMinutes,
+}: {
+  event: CalendarFacilityEvent;
+  openMinutes: number;
+  closeMinutes: number;
+}) {
+  const displayStart = Math.max(event.startMinutes, openMinutes);
+  const displayEnd = Math.min(event.endMinutes, closeMinutes);
+  if (displayEnd <= displayStart) {
+    return null;
+  }
+
+  const top = (displayStart - openMinutes) * PX_PER_MINUTE;
+  const height = Math.max(MIN_BLOCK_HEIGHT, (displayEnd - displayStart) * PX_PER_MINUTE);
+  const style = eventStyles(event.kind);
+  const titleBits = [
+    `${event.startLabel}–${event.endLabel}`,
+    style.label,
+    event.title,
+    event.blocksScheduling ? 'blokuje lekcje' : null,
+    event.description,
+  ].filter(Boolean);
+
+  return (
+    <div
+      className="es-cal-block"
+      title={titleBits.join(' · ')}
+      style={{
+        position: 'absolute',
+        top,
+        height,
+        left: 2,
+        right: 2,
+        overflow: 'hidden',
+        padding: `4px ${spacing.sm}px`,
+        borderRadius: radii.sm,
+        borderLeft: `3px solid ${style.border}`,
+        background: style.background,
+        color: colors.text,
+        fontSize: typography.fontSize.xs,
+        lineHeight: 1.35,
+        zIndex: 1,
+        boxShadow: `inset 0 0 0 1px ${style.border}33`,
+      }}
+    >
+      <div style={{ fontWeight: 600 }}>
+        {event.startLabel}–{event.endLabel}
+        <span style={{ fontWeight: 500, color: style.border }}> · {style.label}</span>
+      </div>
+      <div>{event.title}</div>
+      {event.blocksScheduling ? (
+        <div style={{ color: colors.textMuted }}>Blokuje planowanie lekcji</div>
+      ) : null}
+      {event.isOrgWide ? (
+        <div style={{ color: colors.textMuted }}>Cały ośrodek</div>
+      ) : null}
+    </div>
+  );
+}
+
 export function CalendarGrid({
   resources,
   lessons,
+  events,
   openMinutes,
   closeMinutes,
   isToday,
@@ -44,6 +127,7 @@ export function CalendarGrid({
 }: {
   resources: CalendarResource[];
   lessons: CalendarLesson[];
+  events: CalendarFacilityEvent[];
   openMinutes: number;
   closeMinutes: number;
   isToday: boolean;
@@ -81,7 +165,7 @@ export function CalendarGrid({
   if (resources.length === 0) {
     return (
       <p style={{ color: colors.textMuted, margin: 0 }}>
-        Najpierw dodaj zasoby (hale, ujeżdżalnie) w zakładce Zasoby, aby zobaczyć kalendarz.
+        Najpierw dodaj obiekty (hale, ujeżdżalnie) w zakładce Obiekty, aby zobaczyć kalendarz.
       </p>
     );
   }
@@ -146,6 +230,9 @@ export function CalendarGrid({
             const columnLessons = lessons.filter((lesson) => lesson.resourceId === resource.id);
             const { placed, laneCount } = layoutColumn(columnLessons);
             const laneWidth = 100 / laneCount;
+            const columnEvents = events.filter(
+              (event) => event.isOrgWide || event.resourceId === resource.id,
+            );
 
             return (
               <div
@@ -159,6 +246,15 @@ export function CalendarGrid({
                   }px, ${colors.border} ${hourPx - 1}px, ${colors.border} ${hourPx}px)`,
                 }}
               >
+                {columnEvents.map((event) => (
+                  <EventBlock
+                    key={`${event.id}-${resource.id}`}
+                    event={event}
+                    openMinutes={openMinutes}
+                    closeMinutes={closeMinutes}
+                  />
+                ))}
+
                 {placed.map((lesson) => {
                   const top = Math.max(0, (lesson.startMinutes - openMinutes) * PX_PER_MINUTE);
                   const height = Math.max(
@@ -191,6 +287,7 @@ export function CalendarGrid({
                         fontSize: typography.fontSize.xs,
                         lineHeight: 1.35,
                         textDecoration: cancelled ? 'line-through' : 'none',
+                        zIndex: 2,
                       }}
                     >
                       <div style={{ fontWeight: 600 }}>
@@ -221,7 +318,7 @@ export function CalendarGrid({
                       right: 0,
                       height: 2,
                       background: colors.danger,
-                      zIndex: 2,
+                      zIndex: 3,
                     }}
                   />
                 ) : null}

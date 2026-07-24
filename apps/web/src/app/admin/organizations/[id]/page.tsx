@@ -256,7 +256,7 @@ export default async function AdminOrganizationDetailPage({
             }}
           >
             <Stat label="Członkowie" value={memberRows.length} />
-            <Stat label="Zasoby" value={resourceCount.count ?? 0} />
+            <Stat label="Obiekty" value={resourceCount.count ?? 0} />
             <Stat label="Konie" value={horseCount.count ?? 0} />
             <Stat label="Lekcje" value={lessonCount.count ?? 0} />
           </div>

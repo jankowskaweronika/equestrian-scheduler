@@ -17,16 +17,83 @@ import {
   Badge,
   Card,
   ErrorMessage,
+  FACILITY_EVENT_KIND_LABELS,
   PageHeader,
   RESOURCE_TYPE_LABELS,
   SectionTitle,
   SuccessMessage,
 } from '@/components/ui';
 import { ArrowRightIcon } from '@/components/icons';
+import type { CalendarFacilityEvent } from '@/lib/calendar/types';
 import { CalendarGrid } from './calendar-grid';
 import { AddLessonForm } from './add-lesson-form';
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+function eventKindTone(kind: CalendarFacilityEvent['kind']) {
+  return kind === 'maintenance' ? 'warning' : 'primary';
+}
+
+function DayEventsPanel({
+  events,
+  resourceNameById,
+}: {
+  events: CalendarFacilityEvent[];
+  resourceNameById: Map<string, string>;
+}) {
+  if (events.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card style={{ marginBottom: spacing.lg }}>
+      <h2 style={{ margin: `0 0 ${spacing.md}px`, fontSize: typography.fontSize.lg }}>
+        Wydarzenia i prace w tym dniu
+      </h2>
+      <div style={{ display: 'grid', gap: spacing.sm }}>
+        {events.map((event) => (
+          <div
+            key={event.id}
+            style={{
+              display: 'grid',
+              gap: 4,
+              padding: spacing.md,
+              borderRadius: radii.md,
+              border: `1px solid ${colors.border}`,
+              background:
+                event.kind === 'maintenance' ? colors.dangerMuted : colors.warningMuted,
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: spacing.sm,
+                alignItems: 'center',
+              }}
+            >
+              <strong>{event.title}</strong>
+              <Badge tone={eventKindTone(event.kind)}>
+                {FACILITY_EVENT_KIND_LABELS[event.kind]}
+              </Badge>
+              {event.blocksScheduling ? <Badge tone="warning">Blokuje lekcje</Badge> : null}
+            </div>
+            <span style={{ fontSize: typography.fontSize.sm, color: colors.textMuted }}>
+              {event.startLabel}–{event.endLabel}
+              {' · '}
+              {event.isOrgWide
+                ? 'Cały ośrodek'
+                : (resourceNameById.get(event.resourceId ?? '') ?? 'Obiekt')}
+            </span>
+            {event.description ? (
+              <span style={{ fontSize: typography.fontSize.sm }}>{event.description}</span>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
 
 function StatCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
@@ -87,18 +154,22 @@ export default async function CalendarPage({
   const dateStr = params.date && DATE_PATTERN.test(params.date) ? params.date : todayStr;
   const isToday = dateStr === todayStr;
 
-  const [{ resources, lessons, horseUsage }, formOptions] = await Promise.all([
+  const [{ resources, lessons, events, horseUsage }, formOptions] = await Promise.all([
     getCalendarDay(organizationId, dateStr, timeZone),
     getLessonFormOptions(organizationId),
   ]);
 
   const activeLessons = lessons.filter((lesson) => lesson.status === 'active');
   const cancelledCount = lessons.length - activeLessons.length;
+  const resourceNameById = new Map(resources.map((resource) => [resource.id, resource.name]));
 
   // "Now" snapshot (server-rendered): who is currently on each resource.
   const nowMinutes = isToday ? getMinutesOfDay(new Date(), timeZone) : -1;
   const ongoingLessons = activeLessons.filter(
     (lesson) => nowMinutes >= lesson.startMinutes && nowMinutes < lesson.endMinutes,
+  );
+  const ongoingEvents = events.filter(
+    (event) => nowMinutes >= event.startMinutes && nowMinutes < event.endMinutes,
   );
   const horsesWorkingNow = new Set(
     ongoingLessons.flatMap((lesson) => lesson.horses.map((horse) => horse.id)),
@@ -110,8 +181,8 @@ export default async function CalendarPage({
   return (
     <div>
       <PageHeader
-        title="Kalendarz zasobów"
-        description="Podgląd lekcji na halach i ujeżdżalniach: instruktorzy, konie, status i czas trwania."
+        title="Kalendarz obiektów"
+        description="Lekcje, wydarzenia i prace techniczne na halach oraz ujeżdżalniach."
       />
 
       {params.success ? (
@@ -217,8 +288,19 @@ export default async function CalendarPage({
           value={isToday ? String(horsesWorkingNow.size) : '—'}
           hint={`${horseUsage.length} koni pracuje dziś`}
         />
-        <StatCard label="Zasoby" value={String(resources.length)} hint="hale i ujeżdżalnie" />
+        <StatCard label="Obiekty" value={String(resources.length)} hint="hale i ujeżdżalnie" />
+        <StatCard
+          label="Wydarzenia / prace"
+          value={String(events.length)}
+          hint={
+            events.some((event) => event.kind === 'maintenance')
+              ? 'w tym prace techniczne'
+              : 'w tym dniu'
+          }
+        />
       </div>
+
+      <DayEventsPanel events={events} resourceNameById={resourceNameById} />
 
       {/* Live now panel */}
       {isToday ? (
@@ -235,6 +317,9 @@ export default async function CalendarPage({
           >
             {resources.map((resource) => {
               const here = ongoingLessons.filter((lesson) => lesson.resourceId === resource.id);
+              const hereEvents = ongoingEvents.filter(
+                (event) => event.isOrgWide || event.resourceId === resource.id,
+              );
               return (
                 <div
                   key={resource.id}
@@ -248,7 +333,7 @@ export default async function CalendarPage({
                     <strong>{resource.name}</strong>
                     <Badge>{RESOURCE_TYPE_LABELS[resource.type]}</Badge>
                   </div>
-                  {here.length === 0 ? (
+                  {here.length === 0 && hereEvents.length === 0 ? (
                     <p
                       style={{
                         margin: `${spacing.xs}px 0 0`,
@@ -258,27 +343,53 @@ export default async function CalendarPage({
                     >
                       Wolne
                     </p>
-                  ) : (
-                    here.map((lesson) => (
-                      <div key={lesson.id} style={{ marginTop: spacing.xs }}>
-                        <span style={{ fontSize: typography.fontSize.sm, fontWeight: 600 }}>
-                          {lesson.instructorName}
-                        </span>
-                        <span
-                          style={{
-                            fontSize: typography.fontSize.xs,
-                            color: colors.textMuted,
-                            display: 'block',
-                          }}
-                        >
-                          do {lesson.endLabel}
-                          {lesson.horses.length > 0
-                            ? ` · ${lesson.horses.map((horse) => horse.name).join(', ')}`
-                            : ''}
-                        </span>
-                      </div>
-                    ))
-                  )}
+                  ) : null}
+                  {hereEvents.map((event) => (
+                    <div key={event.id} style={{ marginTop: spacing.xs }}>
+                      <Badge tone={eventKindTone(event.kind)}>
+                        {FACILITY_EVENT_KIND_LABELS[event.kind]}
+                      </Badge>
+                      <span
+                        style={{
+                          display: 'block',
+                          marginTop: 4,
+                          fontSize: typography.fontSize.sm,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {event.title}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: typography.fontSize.xs,
+                          color: colors.textMuted,
+                          display: 'block',
+                        }}
+                      >
+                        do {event.endLabel}
+                        {event.blocksScheduling ? ' · blokuje lekcje' : ''}
+                      </span>
+                    </div>
+                  ))}
+                  {here.map((lesson) => (
+                    <div key={lesson.id} style={{ marginTop: spacing.xs }}>
+                      <span style={{ fontSize: typography.fontSize.sm, fontWeight: 600 }}>
+                        {lesson.instructorName}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: typography.fontSize.xs,
+                          color: colors.textMuted,
+                          display: 'block',
+                        }}
+                      >
+                        do {lesson.endLabel}
+                        {lesson.horses.length > 0
+                          ? ` · ${lesson.horses.map((horse) => horse.name).join(', ')}`
+                          : ''}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               );
             })}
@@ -291,6 +402,7 @@ export default async function CalendarPage({
         <CalendarGrid
           resources={resources}
           lessons={lessons}
+          events={events}
           openMinutes={openMinutes}
           closeMinutes={closeMinutes}
           isToday={isToday}
@@ -368,7 +480,7 @@ export default async function CalendarPage({
         Edycja lekcji (przeciąganie, zmiana długości, serie tygodniowe i ostrzeżenia o kolizjach)
         pojawi się w kolejnym kroku.{' '}
         <Link href="/dashboard/resources">
-          Zarządzaj zasobami <ArrowRightIcon width={14} height={14} />
+          Zarządzaj obiektami <ArrowRightIcon width={14} height={14} />
         </Link>
       </p>
     </div>

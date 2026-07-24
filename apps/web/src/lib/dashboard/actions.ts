@@ -78,7 +78,7 @@ export async function createResource(formData: FormData): Promise<void> {
   const parallelCapacity = Number(formData.get('parallelCapacity') ?? 1);
 
   if (!name || parallelCapacity < 1) {
-    redirect('/dashboard/resources?error=' + encodeURIComponent('Podaj nazwę i pojemność zasobu.'));
+    redirect('/dashboard/resources?error=' + encodeURIComponent('Podaj nazwę i pojemność obiektu.'));
   }
 
   const supabase = await createClient();
@@ -90,11 +90,50 @@ export async function createResource(formData: FormData): Promise<void> {
   });
 
   if (error) {
-    redirect('/dashboard/resources?error=' + encodeURIComponent('Nie udało się dodać zasobu.'));
+    redirect('/dashboard/resources?error=' + encodeURIComponent('Nie udało się dodać obiektu.'));
   }
 
   revalidatePath('/dashboard/resources');
-  redirect('/dashboard/resources?success=' + encodeURIComponent('Dodano zasób.'));
+  redirect('/dashboard/resources?success=' + encodeURIComponent('Dodano obiekt.'));
+}
+
+export async function updateResource(resourceId: string, formData: FormData): Promise<void> {
+  const session = await requireManagerSession();
+  const organizationId = getOrganizationId(session);
+
+  const name = String(formData.get('name') ?? '').trim();
+  const type = String(formData.get('type') ?? 'indoor');
+  const parallelCapacity = Number(formData.get('parallelCapacity') ?? 1);
+
+  if (!name || parallelCapacity < 1) {
+    redirect(
+      `/dashboard/resources?edit=${resourceId}&error=` +
+        encodeURIComponent('Podaj nazwę i pojemność obiektu.'),
+    );
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('facility_resources')
+    .update({
+      name,
+      type,
+      parallel_capacity: parallelCapacity,
+    })
+    .eq('id', resourceId)
+    .eq('organization_id', organizationId)
+    .is('archived_at', null);
+
+  if (error) {
+    redirect(
+      `/dashboard/resources?edit=${resourceId}&error=` +
+        encodeURIComponent('Nie udało się zapisać zmian obiektu.'),
+    );
+  }
+
+  revalidatePath('/dashboard/resources');
+  revalidatePath('/dashboard/calendar');
+  redirect('/dashboard/resources?success=' + encodeURIComponent('Zapisano zmiany obiektu.'));
 }
 
 export async function archiveResource(resourceId: string): Promise<void> {
@@ -109,11 +148,95 @@ export async function archiveResource(resourceId: string): Promise<void> {
     .eq('organization_id', organizationId);
 
   if (error) {
-    redirect('/dashboard/resources?error=' + encodeURIComponent('Nie udało się usunąć zasobu.'));
+    redirect('/dashboard/resources?error=' + encodeURIComponent('Nie udało się zarchiwizować obiektu.'));
   }
 
   revalidatePath('/dashboard/resources');
-  redirect('/dashboard/resources?success=' + encodeURIComponent('Zasób został zarchiwizowany.'));
+  revalidatePath('/dashboard/calendar');
+  redirect('/dashboard/resources?success=' + encodeURIComponent('Obiekt został zarchiwizowany.'));
+}
+
+export async function createFacilityEvent(formData: FormData): Promise<void> {
+  const session = await requireManagerSession();
+  const organizationId = getOrganizationId(session);
+
+  const kind = String(formData.get('kind') ?? 'public_event');
+  const title = String(formData.get('title') ?? '').trim();
+  const description = String(formData.get('description') ?? '').trim() || null;
+  const resourceId = String(formData.get('resourceId') ?? '').trim() || null;
+  const startsAtLocal = String(formData.get('startsAt') ?? '');
+  const endsAtLocal = String(formData.get('endsAt') ?? '');
+  const blocksScheduling = formData.get('blocksScheduling') === 'on';
+
+  if (kind !== 'public_event' && kind !== 'maintenance') {
+    redirect('/dashboard/resources?error=' + encodeURIComponent('Nieprawidłowy typ wydarzenia.'));
+  }
+
+  if (!title || !startsAtLocal || !endsAtLocal) {
+    redirect(
+      '/dashboard/resources?error=' +
+        encodeURIComponent('Podaj tytuł oraz datę rozpoczęcia i zakończenia.'),
+    );
+  }
+
+  const startsAt = new Date(startsAtLocal);
+  const endsAt = new Date(endsAtLocal);
+  if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime()) || endsAt <= startsAt) {
+    redirect(
+      '/dashboard/resources?error=' +
+        encodeURIComponent('Sprawdź daty — zakończenie musi być później niż start.'),
+    );
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from('facility_events').insert({
+    organization_id: organizationId,
+    resource_id: resourceId,
+    kind,
+    title,
+    description,
+    starts_at: startsAt.toISOString(),
+    ends_at: endsAt.toISOString(),
+    blocks_scheduling: kind === 'maintenance' ? true : blocksScheduling,
+    created_by: session.userId,
+  });
+
+  if (error) {
+    redirect(
+      '/dashboard/resources?error=' + encodeURIComponent('Nie udało się dodać wydarzenia.'),
+    );
+  }
+
+  revalidatePath('/dashboard/resources');
+  revalidatePath('/dashboard/calendar');
+  redirect(
+    '/dashboard/resources?success=' +
+      encodeURIComponent(
+        kind === 'maintenance' ? 'Dodano pracę techniczną.' : 'Dodano wydarzenie.',
+      ),
+  );
+}
+
+export async function archiveFacilityEvent(eventId: string): Promise<void> {
+  const session = await requireManagerSession();
+  const organizationId = getOrganizationId(session);
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('facility_events')
+    .update({ archived_at: new Date().toISOString() })
+    .eq('id', eventId)
+    .eq('organization_id', organizationId);
+
+  if (error) {
+    redirect(
+      '/dashboard/resources?error=' + encodeURIComponent('Nie udało się zarchiwizować wydarzenia.'),
+    );
+  }
+
+  revalidatePath('/dashboard/resources');
+  revalidatePath('/dashboard/calendar');
+  redirect('/dashboard/resources?success=' + encodeURIComponent('Wydarzenie zostało zarchiwizowane.'));
 }
 
 export async function createHorse(formData: FormData): Promise<void> {
