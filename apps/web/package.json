@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@equestrian-scheduler/config": "workspace:*",
+    "@swc/helpers": "^0.5.23",
     "@types/node": "^22.10.2",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",

@@ -157,3 +157,78 @@ export async function sendInviteEmail(params: {
     text: inviteEmailText(params),
   });
 }
+
+function passwordResetEmailHtml(params: { resetUrl: string }): string {
+  return `<!doctype html>
+<html lang="pl">
+  <body style="margin:0;background-color:#F7F5F0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1D2A24;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F7F5F0;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px;background-color:#FFFFFF;border:1px solid #E4DFD4;border-radius:16px;overflow:hidden;">
+            <tr>
+              <td style="background-color:#2F5D3A;padding:24px 32px;color:#FFFFFF;font-size:18px;font-weight:600;letter-spacing:0.02em;">
+                Equestrian Scheduler
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px;">
+                <h1 style="margin:0 0 12px;font-size:20px;line-height:1.3;color:#1D2A24;">
+                  Reset hasła
+                </h1>
+                <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#6B7280;">
+                  Otrzymaliśmy prośbę o zresetowanie hasła do Twojego konta.
+                  Kliknij poniższy przycisk, aby ustawić nowe hasło.
+                </p>
+                <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;">
+                  <tr>
+                    <td style="border-radius:10px;background-color:#2F5D3A;">
+                      <a href="${params.resetUrl}" style="display:inline-block;padding:12px 24px;font-size:15px;font-weight:600;color:#FFFFFF;text-decoration:none;">
+                        Ustaw nowe hasło
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:0 0 8px;font-size:13px;line-height:1.6;color:#6B7280;">
+                  Jeśli przycisk nie działa, skopiuj poniższy link do przeglądarki:
+                </p>
+                <p style="margin:0 0 24px;font-size:13px;line-height:1.6;word-break:break-all;">
+                  <a href="${params.resetUrl}" style="color:#2F5D3A;">${params.resetUrl}</a>
+                </p>
+                <p style="margin:0;font-size:12px;line-height:1.6;color:#9AA3AE;">
+                  Link jest ważny przez ograniczony czas. Jeśli nie prosiłeś o reset hasła, zignoruj tę wiadomość.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+}
+
+function passwordResetEmailText(params: { resetUrl: string }): string {
+  return [
+    'Reset hasła — Equestrian Scheduler',
+    '',
+    'Otrzymaliśmy prośbę o zresetowanie hasła do Twojego konta.',
+    'Otwórz poniższy link, aby ustawić nowe hasło:',
+    params.resetUrl,
+    '',
+    'Jeśli nie prosiłeś o reset hasła, zignoruj tę wiadomość.',
+  ].join('\n');
+}
+
+/** Sends a password-reset email with the recovery link. */
+export async function sendPasswordResetEmail(params: {
+  to: string;
+  resetUrl: string;
+}): Promise<SendEmailResult> {
+  return sendEmail({
+    to: params.to,
+    subject: 'Reset hasła — Equestrian Scheduler',
+    html: passwordResetEmailHtml(params),
+    text: passwordResetEmailText(params),
+  });
+}

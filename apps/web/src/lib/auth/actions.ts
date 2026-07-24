@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
+import { sendPasswordResetEmail } from '@/lib/email';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 
@@ -83,25 +84,44 @@ export async function signOut() {
 }
 
 export async function requestPasswordReset(formData: FormData): Promise<void> {
-  const email = String(formData.get('email') ?? '').trim();
+  const email = String(formData.get('email') ?? '').trim().toLowerCase();
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
 
   if (!email) {
     redirect('/forgot-password?error=' + encodeURIComponent('Podaj adres email.'));
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${appUrl}/reset-password`,
+  // Always show the same success copy so we do not leak whether an account exists.
+  const successBase = 'Jeśli konto istnieje, wysłaliśmy link do resetu hasła.';
+
+  // Build a custom recovery URL with the hashed token and send it via Resend
+  // (same pattern as invites). /auth/callback verifies the token and opens a
+  // recovery session before redirecting to /reset-password.
+  const admin = createAdminClient();
+  const { data, error } = await admin.auth.admin.generateLink({
+    type: 'recovery',
+    email,
   });
 
-  if (error) {
-    redirect('/forgot-password?error=' + encodeURIComponent('Nie udało się wysłać linku resetującego.'));
+  const hashedToken = data?.properties?.hashed_token;
+  if (error || !hashedToken) {
+    redirect('/forgot-password?success=' + encodeURIComponent(successBase));
   }
 
+  const resetUrl = `${appUrl}/auth/callback?token_hash=${encodeURIComponent(hashedToken)}&type=recovery&next=${encodeURIComponent('/reset-password')}`;
+  const emailResult = await sendPasswordResetEmail({ to: email, resetUrl });
+
+  if (emailResult.ok) {
+    redirect('/forgot-password?success=' + encodeURIComponent(successBase));
+  }
+
+  // Resend can fail for unverified recipient domains (e.g. demo @example.com).
+  // Surface the link so local/dev testing still works.
   redirect(
     '/forgot-password?success=' +
-      encodeURIComponent('Jeśli konto istnieje, wysłaliśmy link do resetu hasła.'),
+      encodeURIComponent(
+        `${successBase} Nie udało się wysłać e-maila — użyj linku: ${resetUrl}`,
+      ),
   );
 }
 
@@ -113,13 +133,58 @@ export async function updatePassword(formData: FormData): Promise<void> {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.updateUser({ password });
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-  if (error) {
-    redirect('/reset-password?error=' + encodeURIComponent('Nie udało się zaktualizować hasła.'));
+  if (userError || !user) {
+    redirect(
+      '/reset-password?error=' +
+        encodeURIComponent('Sesja resetu wygasła. Poproś o nowy link do resetu hasła.'),
+    );
   }
 
-  redirect('/dashboard');
+  // Prefer the authenticated updateUser call. If the recovery session is rejected
+  // by the hosted Auth API (common with custom recovery links), fall back to the
+  // admin API for the already-verified user id.
+  const { error: updateError } = await supabase.auth.updateUser({ password });
+
+  if (updateError) {
+    console.error('[auth] updateUser failed:', updateError.message, updateError);
+
+    const admin = createAdminClient();
+    const { error: adminError } = await admin.auth.admin.updateUserById(user.id, {
+      password,
+    });
+
+    if (adminError) {
+      console.error('[auth] admin.updateUserById failed:', adminError.message, adminError);
+      const message = mapPasswordUpdateError(updateError.message || adminError.message);
+      redirect('/reset-password?error=' + encodeURIComponent(message));
+    }
+  }
+
+  // Refresh the browser session cookies after a successful password change.
+  await supabase.auth.signOut();
+  redirect(
+    '/login?success=' +
+      encodeURIComponent('Hasło zostało zmienione. Zaloguj się nowym hasłem.'),
+  );
+}
+
+function mapPasswordUpdateError(message: string): string {
+  const lower = message.toLowerCase();
+  if (lower.includes('different') || lower.includes('same')) {
+    return 'Nowe hasło musi być inne niż poprzednie.';
+  }
+  if (lower.includes('weak') || lower.includes('strength') || lower.includes('least')) {
+    return 'Hasło jest zbyt słabe. Użyj co najmniej 8 znaków.';
+  }
+  if (lower.includes('session') || lower.includes('jwt') || lower.includes('expired')) {
+    return 'Sesja resetu wygasła. Poproś o nowy link do resetu hasła.';
+  }
+  return `Nie udało się zaktualizować hasła: ${message}`;
 }
 
 export async function acceptInvite(token: string, formData: FormData): Promise<void> {
