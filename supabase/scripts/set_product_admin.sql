@@ -10,7 +10,7 @@
 
 update public.profiles
 set is_product_admin = true
-where email = 'admin@example.com';
+where email = 'chomawerka@gmail.com';
 
 -- To revoke admin access again:
--- update public.profiles set is_product_admin = false where email = 'admin@example.com';
+-- update public.profiles set is_product_admin = false where email = 'chomawerka@gmail.com';
